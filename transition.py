@@ -8,9 +8,9 @@ from cvxopt import matrix, solvers
 import csv
 presence = numpy.array([[0,3],[0,0],[3,3],[3,0],[6,3],[6,0],[9,3],[9,0]])
 target = numpy.array([[0,9],[0,6],[0,3],[0,0],[3,9],[3,6],[3,3],[3,0]])
-Kp = 1000
-Kc = 1000000000
-Dc = 0.1
+Kp = 10
+Kc = 1000
+Dc = 0.5
 Qm = 0
 dt = 1.0e-4
 r = numpy.zeros(128).reshape(8, 8, 2)
@@ -25,8 +25,8 @@ v = numpy.zeros(16).reshape(8, 2,1)
 temp = presence
 tempv = numpy.zeros(16).reshape(8, 2)
 log = presence
-fig = plt.figure()
-plt.axis([-3, 12, -3, 12])
+fig,ax = plt.subplots()
+plt.axis([-20, 20, -20, 20])
 ims = []
 while numpy.sum(numpy.abs(p-r)) > 1:
     for i in range(8):
@@ -49,18 +49,15 @@ while numpy.sum(numpy.abs(p-r)) > 1:
             if i!= j:
                 h[j+1] = (Kc*(numpy.linalg.norm(p[i,j,:])**2-Dc**2)-Qm*numpy.linalg.norm(p[i,j,:]))
         h = matrix(h)
-        tempv[i,0]= solvers.coneqp(A,q,G,h)["x"][0]
-        tempv[i,1]= solvers.coneqp(A,q,G,h)["x"][1]
+        tempv[i]= numpy.array([solvers.coneqp(A,q,G,h)["x"][0],solvers.coneqp(A,q,G,h)["x"][1]])
+    temp = temp + dt*tempv
+    print(numpy.sum(numpy.abs(p-r)))
     for i in range(8):
         for j in range(8):
             p[i,j,:] = temp[i]-temp[j]
-    temp = temp + dt*tempv
     log = numpy.hstack((log,temp))
     im = plt.scatter(temp[:,0],temp[:,1])
-    ims.append(im)
-with open('transition.csv') as f:
-  writer.writerows(log)
-f.close()
+    ims.append([im])
 ani = animation.ArtistAnimation(fig,ims,interval=100)
-plt.show()
-ani.save("transition.mp4")
+numpy.save("transitionlog",log)
+ani.save("transition.mp4", writer="ffmpeg")
